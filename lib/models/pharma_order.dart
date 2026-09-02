@@ -96,12 +96,60 @@ class DeliveryLocation {
   };
 }
 
+/// Why a delivery attempt did not succeed. Mirrors the web's
+/// `FieldFailureReason` / `FAILED_REASON_LABEL`.
+///
+/// ⚠️ Inferred from the web dashboard's usage of `order.delivery.attempts`
+/// — the exact attempt-object shape from your backend hasn't been
+/// confirmed. If it differs (extra fields, different key names), only this
+/// class and `DeliveryAttempt` need to change.
+enum DeliveryFailureReason {
+  notHome('not_home', 'Nobody home'),
+  refused('refused', 'Patient refused the order'),
+  wrongAddress('wrong_address', 'Wrong address'),
+  unreachable('unreachable', 'Could not reach the patient'),
+  paymentDeclined('payment_declined', 'Patient would not pay');
+
+  final String value;
+  final String label;
+  const DeliveryFailureReason(this.value, this.label);
+
+  static DeliveryFailureReason? fromJson(String? raw) {
+    if (raw == null) return null;
+    for (final r in DeliveryFailureReason.values) {
+      if (r.value == raw) return r;
+    }
+    return null;
+  }
+}
+
+class DeliveryAttempt {
+  final DeliveryFailureReason? reason;
+  final String? rawReason;
+  final String? note;
+
+  const DeliveryAttempt({this.reason, this.rawReason, this.note});
+
+  factory DeliveryAttempt.fromJson(Map<String, dynamic> json) =>
+      DeliveryAttempt(
+        reason: DeliveryFailureReason.fromJson(json['reason'] as String?),
+        rawReason: json['reason'] as String?,
+        note: json['note'] as String?,
+      );
+
+  /// Falls back to the raw server string for a reason code this enum
+  /// doesn't yet know, same as the web's `FAILED_REASON_LABEL[last.reason]
+  /// ?? last.reason`.
+  String get label => reason?.label ?? rawReason ?? 'failed';
+}
+
 class DeliveryInfo {
   final String? riderName;
   final String? riderPhone;
   final String? dispatchedAt;
   final String? deliveredAt;
   final DeliveryLocation? currentLocation;
+  final List<DeliveryAttempt> attempts;
 
   DeliveryInfo({
     this.riderName,
@@ -109,6 +157,7 @@ class DeliveryInfo {
     this.dispatchedAt,
     this.deliveredAt,
     this.currentLocation,
+    this.attempts = const [],
   });
 
   factory DeliveryInfo.fromJson(Map<String, dynamic> json) => DeliveryInfo(
@@ -116,12 +165,14 @@ class DeliveryInfo {
     riderPhone: json['riderPhone'] as String?,
     dispatchedAt: json['dispatchedAt'] as String?,
     deliveredAt: json['deliveredAt'] as String?,
-    currentLocation:
-        json['currentLocation'] != null
-            ? DeliveryLocation.fromJson(
-              json['currentLocation'] as Map<String, dynamic>,
-            )
-            : null,
+    currentLocation: json['currentLocation'] != null
+        ? DeliveryLocation.fromJson(
+            json['currentLocation'] as Map<String, dynamic>,
+          )
+        : null,
+    attempts: (json['attempts'] as List<dynamic>? ?? [])
+        .map((e) => DeliveryAttempt.fromJson(e as Map<String, dynamic>))
+        .toList(),
   );
 
   DeliveryInfo copyWith({
@@ -130,12 +181,14 @@ class DeliveryInfo {
     String? dispatchedAt,
     String? deliveredAt,
     DeliveryLocation? currentLocation,
+    List<DeliveryAttempt>? attempts,
   }) => DeliveryInfo(
     riderName: riderName ?? this.riderName,
     riderPhone: riderPhone ?? this.riderPhone,
     dispatchedAt: dispatchedAt ?? this.dispatchedAt,
     deliveredAt: deliveredAt ?? this.deliveredAt,
     currentLocation: currentLocation ?? this.currentLocation,
+    attempts: attempts ?? this.attempts,
   );
 
   Map<String, dynamic> toJson() => {
@@ -197,10 +250,9 @@ class PharmaOrder {
     patientName: json['patientName'] as String? ?? 'Unknown',
     phone: json['phone'] as String? ?? '',
     address: json['address'] as String? ?? '',
-    items:
-        (json['items'] as List<dynamic>? ?? [])
-            .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
+    items: (json['items'] as List<dynamic>? ?? [])
+        .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
+        .toList(),
     status: OrderStatusX.fromString(json['status'] as String? ?? 'Pending'),
     paymentMethod: json['paymentMethod'] as String? ?? '',
     prescriptionUrl: json['prescriptionUrl'] as String?,
@@ -208,18 +260,16 @@ class PharmaOrder {
     tax: (json['tax'] as num?)?.toDouble() ?? 0,
     total: (json['total'] as num?)?.toDouble() ?? 0,
     createdAt: json['createdAt'] as String? ?? DateTime.now().toIso8601String(),
-    delivery:
-        json['delivery'] != null
-            ? DeliveryInfo.fromJson(json['delivery'] as Map<String, dynamic>)
-            : null,
+    delivery: json['delivery'] != null
+        ? DeliveryInfo.fromJson(json['delivery'] as Map<String, dynamic>)
+        : null,
     discount: (json['discount'] as num?)?.toDouble(),
 
     paymentStatus: json['paymentStatus'] as String?,
     prescriptionStoragePath: json['prescriptionStoragePath'] as String?,
-    unmatchedMeds:
-        (json['unmatchedMeds'] as List<dynamic>?)
-            ?.map((e) => e as String)
-            .toList(),
+    unmatchedMeds: (json['unmatchedMeds'] as List<dynamic>?)
+        ?.map((e) => e as String)
+        .toList(),
     pharmacistVerifiedBy: json['pharmacistVerifiedBy'] as String?,
     pharmacistVerifiedAt: json['pharmacistVerifiedAt'] as String?,
     pharmacistNotes: json['pharmacistNotes'] as String?,

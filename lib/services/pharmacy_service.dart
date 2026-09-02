@@ -72,6 +72,8 @@ import 'package:wio_pharmacy/core/services/token_services.dart';
 import 'package:wio_pharmacy/models/drug.dart';
 import 'package:wio_pharmacy/models/pharma_order.dart';
 
+
+
 class PharmacyServiceException implements Exception {
   final String message;
 
@@ -177,5 +179,25 @@ class PharmacyService {
     if (res.statusCode != 200 || payload['success'] != true) return [];
     final list = payload['data'] as List<dynamic>? ?? [];
     return list.map((e) => Drug.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+    /// Who is signed in: `null` means the tenant owner (every permission);
+  /// a value means a staff login checked against its preset. Mirrors the
+  /// web dashboard's `/api/pharmacy/profile` read.
+  ///
+  /// ⚠️ The exact response shape is inferred from the web's
+  /// `payload.data?.subRole` — if your `/api/pharmacy/profile` wraps it
+  /// differently, only this method needs adjusting.
+  Future<String?> fetchSubRoleRaw() async {
+    final res = await http.get(
+      Uri.parse('${ApiConstants.backendBaseUrl}/api/pharmacy/profile'),
+      headers: await _headers(),
+    );
+    final payload = jsonDecode(res.body) as Map<String, dynamic>?;
+    if (res.statusCode != 200 || payload?['success'] != true) {
+      throw PharmacyServiceException('Failed to load profile');
+    }
+    final data = payload!['data'] as Map<String, dynamic>?;
+    return data?['subRole'] as String?;
   }
 }

@@ -809,10 +809,9 @@ class OrderCard extends StatefulWidget {
     this.onAccept,
     this.onUpdate,
     this.onSendQuote,
-    this.onStartGps,
-    this.onStopGps,
     this.onAssignRider,
     this.onVerifyRx,
+    this.canVerifyRx,
     this.gpsLive = false,
     this.activeDeliveryId,
   });
@@ -821,12 +820,9 @@ class OrderCard extends StatefulWidget {
   final VoidCallback? onAccept;
   final void Function(OrderStatus status)? onUpdate;
   final void Function(double subtotal)? onSendQuote;
-  final VoidCallback? onStartGps;
-  final VoidCallback? onStopGps;
   final void Function(DeliveryInfo patch)? onAssignRider;
   final Future<void> Function(String orderId, {String? notes})? onVerifyRx;
-  final bool gpsLive;
-  final String? activeDeliveryId;
+  final bool? canVerifyRx;
 
   @override
   State<OrderCard> createState() => _OrderCardState();
@@ -859,11 +855,10 @@ class _OrderCardState extends State<OrderCard> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (_) => RxViewerSheet(
-            patientName: widget.order.patientName,
-            prescriptionUrl: widget.order.prescriptionUrl!,
-          ),
+      builder: (_) => RxViewerSheet(
+        patientName: widget.order.patientName,
+        prescriptionUrl: widget.order.prescriptionUrl!,
+      ),
     );
   }
 
@@ -872,10 +867,8 @@ class _OrderCardState extends State<OrderCard> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (_) => QuoteSheet(
-            onSend: (subtotal) => widget.onSendQuote?.call(subtotal),
-          ),
+      builder: (_) =>
+          QuoteSheet(onSend: (subtotal) => widget.onSendQuote?.call(subtotal)),
     );
   }
 
@@ -883,46 +876,42 @@ class _OrderCardState extends State<OrderCard> {
     final notesCtrl = TextEditingController();
     showDialog(
       context: context,
-      builder:
-          (dialogContext) => AlertDialog(
-            title: const Text('Verify Prescription'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Confirm the attached prescription is legitimate and matches the ordered items.',
-                  style: TextStyle(fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notesCtrl,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes (optional)',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-              ],
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Verify Prescription'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Confirm the attached prescription is legitimate and matches the ordered items.',
+              style: TextStyle(fontSize: 12),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: notesCtrl,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Notes (optional)',
+                border: OutlineInputBorder(),
+                isDense: true,
               ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(dialogContext);
-                  widget.onVerifyRx?.call(
-                    widget.order.id,
-                    notes: notesCtrl.text,
-                  );
-                },
-                child: const Text('Verify'),
-              ),
-            ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
           ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              widget.onVerifyRx?.call(widget.order.id, notes: notesCtrl.text);
+            },
+            child: const Text('Verify'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1102,10 +1091,9 @@ class _OrderCardState extends State<OrderCard> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color:
-                                    order.pharmacistVerifiedAt != null
-                                        ? Colors.green
-                                        : Colors.orange,
+                                color: order.pharmacistVerifiedAt != null
+                                    ? Colors.green
+                                    : Colors.orange,
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
@@ -1121,35 +1109,55 @@ class _OrderCardState extends State<OrderCard> {
                             ),
                           ],
                         ),
-                        if (order.needsRxVerification) ...[
+                                            if (order.needsRxVerification &&
+                            widget.canVerifyRx != null) ...[
                           const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: () => _showVerifyRxDialog(context),
-                              icon: const Icon(
-                                Icons.verified_outlined,
-                                size: 14,
-                              ),
-                              label: const Text(
-                                'VERIFY PRESCRIPTION',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
+                          if (widget.canVerifyRx == true)
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () => _showVerifyRxDialog(context),
+                                icon: const Icon(
+                                  Icons.verified_outlined,
+                                  size: 14,
+                                ),
+                                label: const Text(
+                                  'VERIFY PRESCRIPTION',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: mint,
+                                  side: const BorderSide(color: mint),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
                               ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: mint,
-                                side: const BorderSide(color: mint),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8,
+                            )
+                          else
+                            Row(
+                              children: [
+                                Icon(Icons.access_time,
+                                    size: 12, color: Colors.amber.shade800),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Waiting for pharmacist verification.',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.amber.shade800,
+                                    ),
+                                  ),
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
+                              ],
                             ),
-                          ),
                         ],
                         const SizedBox(height: 8),
                         Row(
@@ -1202,10 +1210,9 @@ class _OrderCardState extends State<OrderCard> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: OutlinedButton.icon(
-                                onPressed:
-                                    () => Fluttertoast.showToast(
-                                      msg: 'Downloading prescription file...',
-                                    ),
+                                onPressed: () => Fluttertoast.showToast(
+                                  msg: 'Downloading prescription file...',
+                                ),
                                 icon: const Icon(
                                   Icons.download_outlined,
                                   size: 14,
@@ -1388,6 +1395,70 @@ class _OrderCardState extends State<OrderCard> {
                     ],
                   ),
                 ),
+                // Failed delivery attempt — the order stays exactly where it
+                // was (nothing settled or refunded), so this is what turns
+                // it back into a decision instead of leaving it stuck.
+                if (order.status == OrderStatus.outForDelivery &&
+                    (order.delivery?.attempts.isNotEmpty ?? false)) ...[
+                  const SizedBox(height: 14),
+                  Builder(
+                    builder: (context) {
+                      final attempts = order.delivery!.attempts;
+                      final last = attempts.last;
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.red.withOpacity(0.25),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'DELIVERY FAILED · ATTEMPT ${attempts.length}',
+                              style: const TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.5,
+                                color: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              last.label,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (last.note != null && last.note!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                last.note!,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Nothing was settled or refunded. Dispatch again, or cancel to refund.',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
 
                 // Rider assignment (only when out for delivery)
                 if (order.status == OrderStatus.outForDelivery &&
@@ -1546,25 +1617,45 @@ class _OrderCardState extends State<OrderCard> {
     }
 
     if (order.status == OrderStatus.processing) {
-      return SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: OutlinedButton.icon(
-          onPressed: () {
-            widget.onUpdate?.call(OrderStatus.outForDelivery);
-            Fluttertoast.showToast(msg: 'Order dispatched.');
-          },
-          icon: const Icon(Icons.local_shipping_outlined, size: 18),
-          label: const Text(
-            'DISPATCH',
-            style: TextStyle(fontWeight: FontWeight.w900),
-          ),
-          style: OutlinedButton.styleFrom(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+      final rxNeedsSignOff = order.needsRxVerification;
+      return Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: rxNeedsSignOff
+                  ? null
+                  : () {
+                      widget.onUpdate?.call(OrderStatus.outForDelivery);
+                      Fluttertoast.showToast(msg: 'Order dispatched.');
+                    },
+              icon: const Icon(Icons.local_shipping_outlined, size: 18),
+              label: const Text(
+                'DISPATCH',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
             ),
           ),
-        ),
+          if (rxNeedsSignOff) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Rx sign-off required before dispatch',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                color: Colors.grey.shade600,
+                letterSpacing: 0.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
       );
     }
 
@@ -1576,10 +1667,9 @@ class _OrderCardState extends State<OrderCard> {
             width: double.infinity,
             height: 42,
             child: ElevatedButton(
-              onPressed:
-                  isActive
-                      ? widget.onStopGps
-                      : (widget.gpsLive ? null : widget.onStartGps),
+              onPressed: isActive
+                  ? widget.onStopGps
+                  : (widget.gpsLive ? null : widget.onStartGps),
               style: ElevatedButton.styleFrom(
                 backgroundColor: isActive ? Colors.red : Colors.green,
                 shape: RoundedRectangleBorder(

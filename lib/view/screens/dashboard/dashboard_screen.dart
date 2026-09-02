@@ -3,6 +3,7 @@ import 'package:wio_pharmacy/models/pharma_order.dart';
 import 'package:wio_pharmacy/view/screens/dashboard/widgets/app_drawer.dart';
 import 'package:wio_pharmacy/view/screens/dashboard/widgets/order_history_card.dart';
 import 'package:wio_pharmacy/viewmodel/dashboard/dashboard_view_model.dart';
+import 'widgets/dispatch_panel.dart';
 import 'widgets/order_card.dart';
 import 'widgets/sop_sheet.dart';
 import 'widgets/alert_detail_sheet.dart';
@@ -50,11 +51,12 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F9FC),
-      endDrawer: const AppDrawer(
-        // Swap these for real values once wired to your profile/pharmacy state,
-        // e.g. from a ProfileViewModel or PharmacyProfile if already loaded here.
-        pharmacyName: null,
-        pharmacyLogoUrl: null,
+          endDrawer: ListenableBuilder(
+        listenable: _viewModel,
+        builder: (context, _) => AppDrawer(
+          pharmacyName: _viewModel.pharmacyName,
+          pharmacyLogoUrl: _viewModel.pharmacyLogoUrl,
+        ),
       ),
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -64,23 +66,20 @@ class _DashboardScreenState extends State<DashboardScreen>
           style: TextStyle(color: navy, fontWeight: FontWeight.w900),
         ),
         leading: Builder(
-          builder:
-              (context) => IconButton(
-                icon: const Icon(Icons.menu_rounded, color: navy),
-                onPressed: () => Scaffold.of(context).openEndDrawer(),
-              ),
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu_rounded, color: navy),
+            onPressed: () => Scaffold.of(context).openEndDrawer(),
+          ),
         ),
         actions: [
           ListenableBuilder(
             listenable: _viewModel,
-            builder:
-                (context, _) => IconButton(
-                  icon: const Icon(Icons.history, color: navy),
-                  onPressed:
-                      () => _openBottomSheet(
-                        OrderHistorySheet(orders: _viewModel.orderHistory),
-                      ),
-                ),
+            builder: (context, _) => IconButton(
+              icon: const Icon(Icons.history, color: navy),
+              onPressed: () => _openBottomSheet(
+                OrderHistorySheet(orders: _viewModel.orderHistory),
+              ),
+            ),
           ),
         ],
         bottom: TabBar(
@@ -88,7 +87,10 @@ class _DashboardScreenState extends State<DashboardScreen>
           labelColor: mint,
           unselectedLabelColor: Colors.black45,
           indicatorColor: mint,
-          tabs: const [Tab(text: 'ONLINE QUEUE'), Tab(text: 'PRESCRIPTION AI')],
+          tabs: const [
+            Tab(text: 'ONLINE QUEUE'),
+            Tab(text: 'PRESCRIPTION AI'),
+          ],
         ),
       ),
       body: ListenableBuilder(
@@ -135,19 +137,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                 onSendQuote: (subtotal) => vm.sendQuote(o.id, subtotal),
               ),
             ),
-          if (vm.outForDeliveryOrders.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'LIVE DELIVERY DISPATCH',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 11,
-                color: Colors.black45,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...vm.outForDeliveryOrders.map((o) => _deliveryStrip(vm, o)),
-          ],
+          const SizedBox(height: 24),
+          DispatchPanel(jobs: vm.dispatchableDeliveries),
           const SizedBox(height: 24),
           _sectionHeader(
             'Active Logistics',
@@ -161,11 +152,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               (o) => OrderCard(
                 order: o,
                 onUpdate: (status) => vm.updateStatus(o.id, status),
-                onStartGps: () => vm.startDeliveryGps(o.id),
-                onStopGps: vm.stopDeliveryGps,
-                gpsLive: vm.gpsLive,
-                activeDeliveryId: vm.activeDeliveryId,
                 onAssignRider: (d) => vm.assignRider(o.id, d),
+                onVerifyRx: vm.verifyRx,
+                canVerifyRx: vm.canVerifyRx,
               ),
             ),
         ],
@@ -285,75 +274,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               fontWeight: FontWeight.w900,
               letterSpacing: 1,
               color: Colors.black38,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _deliveryStrip(DashboardViewModel vm, order) {
-    final isActive = vm.activeDeliveryId == order.id;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor:
-                isActive ? Colors.green.shade50 : Colors.blue.shade50,
-            child: Icon(
-              isActive ? Icons.podcasts : Icons.navigation,
-              color: isActive ? Colors.green : Colors.blue,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  order.patientName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  order.address,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: Colors.black45),
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed:
-                isActive
-                    ? vm.stopDeliveryGps
-                    : (vm.gpsLive ? null : () => vm.startDeliveryGps(order.id)),
-            style: TextButton.styleFrom(
-              backgroundColor: isActive ? Colors.red : Colors.green,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-            child: Text(
-              isActive ? 'STOP GPS' : 'START GPS',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-              ),
             ),
           ),
         ],
