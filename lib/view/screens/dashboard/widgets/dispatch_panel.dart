@@ -40,6 +40,7 @@ class _DispatchPanelState extends State<DispatchPanel> {
   FieldReconciliation? _settlement;
   bool _busy = false;
   String? _error;
+  bool _linkJustCopied = false;
 
   @override
   void initState() {
@@ -140,6 +141,16 @@ class _DispatchPanelState extends State<DispatchPanel> {
       if (mounted) setState(() => _busy = false);
     }
     await _load();
+  }
+
+  Future<void> _copyLink(String link) async {
+    await Clipboard.setData(ClipboardData(text: link));
+    if (!mounted) return;
+    setState(() => _linkJustCopied = true);
+    Fluttertoast.showToast(msg: 'Link has been copied');
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _linkJustCopied = false);
+    });
   }
 
   Future<void> _openInMaps(LatLngModel loc) async {
@@ -429,12 +440,13 @@ class _DispatchPanelState extends State<DispatchPanel> {
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.copy, size: 16),
-                          onPressed: () => Clipboard.setData(
-                            ClipboardData(
-                              text: _shiftLinkFrom(_issued!.token!),
-                            ),
+                          icon: Icon(
+                            _linkJustCopied ? Icons.check : Icons.copy,
+                            size: 16,
+                            color: _linkJustCopied ? _kMint : null,
                           ),
+                          onPressed: () =>
+                              _copyLink(_shiftLinkFrom(_issued!.token!)),
                         ),
                       ],
                     ),
