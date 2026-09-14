@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:wio_pharmacy/core/constants/api_constants.dart';
 import 'package:wio_pharmacy/core/services/token_services.dart';
-import '../models/field_models.dart';
+import 'package:wio_pharmacy/models/field_model.dart';
 
 class FieldApiException implements Exception {
   final String message;
@@ -52,12 +52,14 @@ class FieldApiService {
         return const FieldDispatchBoard(workers: [], shifts: []);
       }
       return FieldDispatchBoard(
-        workers: (decoded['workers'] as List<dynamic>? ?? [])
-            .map((e) => FieldWorker.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        shifts: (decoded['shifts'] as List<dynamic>? ?? [])
-            .map((e) => BoardShift.fromJson(e as Map<String, dynamic>))
-            .toList(),
+        workers:
+            (decoded['workers'] as List<dynamic>? ?? [])
+                .map((e) => FieldWorker.fromJson(e as Map<String, dynamic>))
+                .toList(),
+        shifts:
+            (decoded['shifts'] as List<dynamic>? ?? [])
+                .map((e) => BoardShift.fromJson(e as Map<String, dynamic>))
+                .toList(),
       );
     } catch (_) {
       return const FieldDispatchBoard(workers: [], shifts: []);
@@ -121,8 +123,8 @@ class FieldApiService {
     }
     return decoded['reconciliation'] != null
         ? FieldReconciliation.fromJson(
-            decoded['reconciliation'] as Map<String, dynamic>,
-          )
+          decoded['reconciliation'] as Map<String, dynamic>,
+        )
         : null;
   }
 }

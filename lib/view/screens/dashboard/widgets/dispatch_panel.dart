@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wio_pharmacy/core/constants/api_constants.dart';
-import '../../../../models/field_models.dart';
+import 'package:wio_pharmacy/models/field_model.dart';
 import '../../../../services/field_api_service.dart';
 
 const Color _kNavy = Color(0xFF0E1B33);
@@ -70,9 +71,10 @@ class _DispatchPanelState extends State<DispatchPanel> {
   List<DispatchableJob> get _available =>
       widget.jobs.where((j) => !_onRoute.contains(j.id)).toList();
 
-  List<FieldWorker> get _roster => _workers
-      .where((w) => w.active && w.kind == FieldWorkerKind.rider)
-      .toList();
+  List<FieldWorker> get _roster =>
+      _workers
+          .where((w) => w.active && w.kind == FieldWorkerKind.rider)
+          .toList();
 
   Set<String> get _busyWorkerIds => _board.map((b) => b.shift.workerId).toSet();
 
@@ -113,9 +115,11 @@ class _DispatchPanelState extends State<DispatchPanel> {
       await _load();
     } catch (e) {
       setState(
-        () => _error = e is FieldApiException
-            ? e.message
-            : 'Could not start the shift.',
+        () =>
+            _error =
+                e is FieldApiException
+                    ? e.message
+                    : 'Could not start the shift.',
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -200,76 +204,87 @@ class _DispatchPanelState extends State<DispatchPanel> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _roster.map((w) {
-                final onRound = _busyWorkerIds.contains(w.id);
-                final picked = _workerId == w.id;
-                return InkWell(
-                  onTap: onRound
-                      ? null
-                      : () => setState(() => _workerId = picked ? null : w.id),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Opacity(
-                    opacity: onRound ? 0.55 : 1,
-                    child: Container(
-                      width: 160,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: picked ? _kNavy : Colors.grey.shade300,
-                          width: picked ? 1.5 : 1,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        color: picked ? _kNavy.withOpacity(0.05) : Colors.white,
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 14,
-                            backgroundColor: Colors.grey.shade200,
-                            child: Text(
-                              w.name.trim().isNotEmpty
-                                  ? w.name.trim()[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
+              children:
+                  _roster.map((w) {
+                    final onRound = _busyWorkerIds.contains(w.id);
+                    final picked = _workerId == w.id;
+                    return InkWell(
+                      onTap:
+                          onRound
+                              ? null
+                              : () => setState(
+                                () => _workerId = picked ? null : w.id,
                               ),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Opacity(
+                        opacity: onRound ? 0.55 : 1,
+                        child: Container(
+                          width: 160,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: picked ? _kNavy : Colors.grey.shade300,
+                              width: picked ? 1.5 : 1,
                             ),
+                            borderRadius: BorderRadius.circular(12),
+                            color:
+                                picked
+                                    ? _kNavy.withOpacity(0.05)
+                                    : Colors.white,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  w.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 14,
+                                backgroundColor: Colors.grey.shade200,
+                                child: Text(
+                                  w.name.trim().isNotEmpty
+                                      ? w.name.trim()[0].toUpperCase()
+                                      : '?',
                                   style: const TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                Text(
-                                  onRound ? 'Out on a round' : w.phone,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey.shade600,
-                                  ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      w.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      onRound ? 'Out on a round' : w.phone,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                              if (picked)
+                                const Icon(
+                                  Icons.check,
+                                  size: 16,
+                                  color: _kNavy,
+                                ),
+                            ],
                           ),
-                          if (picked)
-                            const Icon(Icons.check, size: 16, color: _kNavy),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
             ),
           const SizedBox(height: 14),
 
@@ -300,17 +315,15 @@ class _DispatchPanelState extends State<DispatchPanel> {
                       children: [
                         CircleAvatar(
                           radius: 12,
-                          backgroundColor: picked
-                              ? _kNavy
-                              : Colors.grey.shade200,
+                          backgroundColor:
+                              picked ? _kNavy : Colors.grey.shade200,
                           child: Text(
                             picked ? '${index + 1}' : '·',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: picked
-                                  ? Colors.white
-                                  : Colors.grey.shade600,
+                              color:
+                                  picked ? Colors.white : Colors.grey.shade600,
                             ),
                           ),
                         ),
@@ -369,18 +382,19 @@ class _DispatchPanelState extends State<DispatchPanel> {
                 FilledButton.icon(
                   onPressed:
                       (_busy ||
-                          _workerId == null ||
-                          _selectedBusy ||
-                          _selected.isEmpty)
-                      ? null
-                      : () => _dispatch('otp'),
-                  icon: _busy
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send, size: 16),
+                              _workerId == null ||
+                              _selectedBusy ||
+                              _selected.isEmpty)
+                          ? null
+                          : () => _dispatch('otp'),
+                  icon:
+                      _busy
+                          ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Icon(Icons.send, size: 16),
                   label: Text(
                     'Dispatch ${_selected.isEmpty ? '' : _selected.length}',
                   ),
@@ -388,11 +402,11 @@ class _DispatchPanelState extends State<DispatchPanel> {
                 OutlinedButton(
                   onPressed:
                       (_busy ||
-                          _workerId == null ||
-                          _selectedBusy ||
-                          _selected.isEmpty)
-                      ? null
-                      : () => _dispatch('token'),
+                              _workerId == null ||
+                              _selectedBusy ||
+                              _selected.isEmpty)
+                          ? null
+                          : () => _dispatch('token'),
                   child: const Text('Send a link'),
                 ),
               ],
@@ -445,8 +459,8 @@ class _DispatchPanelState extends State<DispatchPanel> {
                             size: 16,
                             color: _linkJustCopied ? _kMint : null,
                           ),
-                          onPressed: () =>
-                              _copyLink(_shiftLinkFrom(_issued!.token!)),
+                          onPressed:
+                              () => _copyLink(_shiftLinkFrom(_issued!.token!)),
                         ),
                       ],
                     ),
@@ -526,9 +540,10 @@ class _DispatchPanelState extends State<DispatchPanel> {
           if (_board.isNotEmpty) ...[
             const SizedBox(height: 14),
             ..._board.map((entry) {
-              final done = entry.stops
-                  .where((s) => s.status == FieldStopStatus.done)
-                  .length;
+              final done =
+                  entry.stops
+                      .where((s) => s.status == FieldStopStatus.done)
+                      .length;
               final name =
                   _workers
                       .where((w) => w.id == entry.shift.workerId)
@@ -581,13 +596,12 @@ class _DispatchPanelState extends State<DispatchPanel> {
                           IconButton(
                             icon: const Icon(Icons.map_outlined, size: 18),
                             tooltip: 'Open in Maps',
-                            onPressed: () =>
-                                _openInMaps(entry.shift.lastLocation!),
+                            onPressed:
+                                () => _openInMaps(entry.shift.lastLocation!),
                           ),
                         TextButton(
-                          onPressed: _busy
-                              ? null
-                              : () => _finish(entry.shift.id),
+                          onPressed:
+                              _busy ? null : () => _finish(entry.shift.id),
                           child: const Text('End shift'),
                         ),
                       ],
@@ -605,9 +619,10 @@ class _DispatchPanelState extends State<DispatchPanel> {
                                       ? Icons.check_circle
                                       : Icons.circle_outlined,
                                   size: 13,
-                                  color: s.status == FieldStopStatus.done
-                                      ? _kMint
-                                      : Colors.grey.shade400,
+                                  color:
+                                      s.status == FieldStopStatus.done
+                                          ? _kMint
+                                          : Colors.grey.shade400,
                                 ),
                                 const SizedBox(width: 6),
                                 Expanded(

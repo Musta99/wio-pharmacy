@@ -3,16 +3,19 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter/material.dart';
 import 'package:wio_pharmacy/models/daily_operational_check.dart';
 import 'package:wio_pharmacy/models/drug.dart';
-import 'package:wio_pharmacy/models/field_models.dart';
+import 'package:wio_pharmacy/models/field_model.dart';
 import 'package:wio_pharmacy/models/pharma_order.dart';
+import 'package:wio_pharmacy/models/pharmacy_permissions.dart';
 import 'package:wio_pharmacy/services/pharmacy_service.dart';
+import 'package:wio_pharmacy/services/profile_services.dart';
 
 class DashboardViewModel extends ChangeNotifier {
-  DashboardViewModel({PharmacyService? service})
+  DashboardViewModel({PharmacyService? service, ProfileService? profileService})
     : _service = service ?? PharmacyService(),
       _profileService = profileService ?? ProfileService();
 
   final PharmacyService _service;
+  final ProfileService _profileService;
   bool _disposed = false;
   void _safeNotify() {
     if (!_disposed) notifyListeners();
@@ -34,42 +37,45 @@ class DashboardViewModel extends ChangeNotifier {
   List<PharmaOrder> get pendingOrders =>
       _orders.where((o) => o.status == OrderStatus.pending).toList();
 
-  List<PharmaOrder> get activeOrders => _orders
-      .where(
-        (o) =>
-            o.status == OrderStatus.processing ||
-            o.status == OrderStatus.outForDelivery ||
-            o.status == OrderStatus.quoted,
-      )
-      .toList();
+  List<PharmaOrder> get activeOrders =>
+      _orders
+          .where(
+            (o) =>
+                o.status == OrderStatus.processing ||
+                o.status == OrderStatus.outForDelivery ||
+                o.status == OrderStatus.quoted,
+          )
+          .toList();
 
   /// Jobs offered to the Rider Dispatch panel — processing or already out
   /// for delivery, mirroring the web dashboard's `DispatchPanel jobs` prop.
   /// The panel itself filters out anything already on an active route.
-  List<DispatchableJob> get dispatchableDeliveries => _orders
-      .where(
-        (o) =>
-            o.status == OrderStatus.processing ||
-            o.status == OrderStatus.outForDelivery,
-      )
-      .map(
-        (o) => DispatchableJob(
-          id: o.id,
-          patientName: o.patientName,
-          address: o.address,
-          unpaid: o.paymentStatus != 'paid',
-        ),
-      )
-      .toList();
+  List<DispatchableJob> get dispatchableDeliveries =>
+      _orders
+          .where(
+            (o) =>
+                o.status == OrderStatus.processing ||
+                o.status == OrderStatus.outForDelivery,
+          )
+          .map(
+            (o) => DispatchableJob(
+              id: o.id,
+              patientName: o.patientName,
+              address: o.address,
+              unpaid: o.paymentStatus != 'paid',
+            ),
+          )
+          .toList();
 
   List<PharmaOrder> get orderHistory {
-    final list = _orders
-        .where(
-          (o) =>
-              o.status == OrderStatus.completed ||
-              o.status == OrderStatus.cancelled,
-        )
-        .toList();
+    final list =
+        _orders
+            .where(
+              (o) =>
+                  o.status == OrderStatus.completed ||
+                  o.status == OrderStatus.cancelled,
+            )
+            .toList();
     list.sort(
       (a, b) =>
           DateTime.parse(b.createdAt).compareTo(DateTime.parse(a.createdAt)),
@@ -77,7 +83,7 @@ class DashboardViewModel extends ChangeNotifier {
     return list;
   }
 
-    /// `null` while the sub-role is still resolving — callers should render
+  /// `null` while the sub-role is still resolving — callers should render
   /// neither the verify button nor a "waiting" note until this is non-null,
   /// same as the web dashboard's `canVerifyRx === undefined` check.
   bool? get canVerifyRx {
@@ -88,13 +94,14 @@ class DashboardViewModel extends ChangeNotifier {
   String? get pharmacyName => _pharmacyName;
   String? get pharmacyLogoUrl => _pharmacyLogoUrl;
 
-  List<Drug> get coldChainItems => _inventory
-      .where(
-        (d) =>
-            d.storage.condition == 'Cold Chain' &&
-            d.stock.current < (d.stock.min * 1.5),
-      )
-      .toList();
+  List<Drug> get coldChainItems =>
+      _inventory
+          .where(
+            (d) =>
+                d.storage.condition == 'Cold Chain' &&
+                d.stock.current < (d.stock.min * 1.5),
+          )
+          .toList();
 
   List<Drug> get reorderItems =>
       _inventory.where((d) => d.stock.current < d.stock.min).toList();
@@ -134,7 +141,8 @@ class DashboardViewModel extends ChangeNotifier {
       _safeNotify();
     }
   }
-    Future<void> _loadSubRole() async {
+
+  Future<void> _loadSubRole() async {
     try {
       final raw = await _service.fetchSubRoleRaw();
       _subRole = PharmacyStaffRole.fromJson(raw);
@@ -146,7 +154,7 @@ class DashboardViewModel extends ChangeNotifier {
     }
   }
 
-    /// Reuses `ProfileService.getProfile()` — already proven to parse the
+  /// Reuses `ProfileService.getProfile()` — already proven to parse the
   /// `/api/pharmacy/profile` response's `profile` object correctly (same
   /// parsing the Profile screen relies on) — rather than re-parsing the
   /// raw JSON a second time with guessed keys.

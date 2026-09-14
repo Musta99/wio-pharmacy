@@ -4,7 +4,9 @@ class ApiConstants {
   // TODO: replace with your actual values (or import from your existing constants file)
   static const String firebaseWebApiKey =
       'AIzaSyAe4Y00uoLRmwxfeL2FdxPyroLekn1jLn8';
-  static const String backendBaseUrl = 'https://www.wiocare.com';
+  // static const String backendBaseUrl = 'https://www.wiocare.com';
+
+  static const String backendBaseUrl = 'https://wiocare-demo.vercel.app';
 
   static const String identityToolkitSignInUrl =
       'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=$firebaseWebApiKey';
